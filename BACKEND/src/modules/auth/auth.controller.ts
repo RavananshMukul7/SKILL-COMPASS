@@ -25,31 +25,34 @@ const getClientIp = (
   return req.socket.remoteAddress;
 };
 
+const isProduction =
+  process.env.NODE_ENV === "production";
+
+const sessionCookieOptions = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? ("none" as const) : ("lax" as const),
+  path: "/",
+};
+
 const setSessionCookie = (
   res: Response,
   sessionToken: string,
   expiresAt: Date
 ) => {
   res.cookie(SESSION_COOKIE_NAME, sessionToken, {
-    httpOnly: true,
-    secure:
-      process.env.NODE_ENV === "production",
-    sameSite: "none",
+    ...sessionCookieOptions,
     expires: expiresAt,
-    path: "/",
   });
 };
 
 const clearSessionCookie = (
   res: Response
 ) => {
-  res.clearCookie(SESSION_COOKIE_NAME, {
-    httpOnly: true,
-    secure:
-      process.env.NODE_ENV === "production",
-    sameSite: "none",
-    path: "/",
-  });
+  res.clearCookie(
+    SESSION_COOKIE_NAME,
+    sessionCookieOptions
+  );
 };
 
 export const register = async (
@@ -68,8 +71,7 @@ export const register = async (
     displayName,
     {
       userAgent:
-        req.get("user-agent") ??
-        undefined,
+        req.get("user-agent") ?? undefined,
 
       ipAddress:
         getClientIp(req),
@@ -104,8 +106,7 @@ export const login = async (
     password,
     {
       userAgent:
-        req.get("user-agent") ??
-        undefined,
+        req.get("user-agent") ?? undefined,
 
       ipAddress:
         getClientIp(req),

@@ -1,6 +1,22 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 import http from "node:http";
+
+vi.mock("./modules/health/health.service.js", () => ({
+  getHealthStatus: vi.fn().mockResolvedValue({
+    status: "ok",
+    service: "SkillCompass API",
+    database: "connected",
+    timestamp: new Date().toISOString(),
+  }),
+}));
 
 import app from "./app.js";
 
@@ -11,20 +27,28 @@ describe("Express application integration", () => {
   beforeAll(async () => {
     server = http.createServer(app);
 
-    await new Promise<void>((resolve) => {
+    await new Promise<void>((resolve, reject) => {
+      server.once("error", reject);
+
       server.listen(0, "127.0.0.1", () => {
         const address = server.address();
 
         if (typeof address === "object" && address !== null) {
           baseUrl = `http://127.0.0.1:${address.port}`;
+          resolve();
+          return;
         }
 
-        resolve();
+        reject(new Error("Could not determine the server address"));
       });
     });
   });
 
   afterAll(async () => {
+    if (!server.listening) {
+      return;
+    }
+
     await new Promise<void>((resolve, reject) => {
       server.close((error) => {
         if (error) {
@@ -76,7 +100,9 @@ describe("Express application integration", () => {
   });
 
   it("should return 404 for an unknown API route", async () => {
-    const response = await fetch(`${baseUrl}/api/does-not-exist`);
+    const response = await fetch(
+      `${baseUrl}/api/does-not-exist`,
+    );
 
     expect(response.status).toBe(404);
 
@@ -88,15 +114,21 @@ describe("Express application integration", () => {
   });
 
   it("should return JSON for an unknown API route", async () => {
-    const response = await fetch(`${baseUrl}/api/unknown-route`);
+    const response = await fetch(
+      `${baseUrl}/api/unknown-route`,
+    );
 
-    expect(response.headers.get("content-type")).toContain("application/json");
+    expect(response.headers.get("content-type")).toContain(
+      "application/json",
+    );
   });
 
   it("should include security headers", async () => {
     const response = await fetch(`${baseUrl}/api/health`);
 
-    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(response.headers.get("x-content-type-options")).toBe(
+      "nosniff",
+    );
   });
 
   it("should reject oversized JSON requests", async () => {
