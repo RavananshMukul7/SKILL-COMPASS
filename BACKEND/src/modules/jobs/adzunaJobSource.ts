@@ -25,7 +25,7 @@ interface AdzunaResponse {
  * The source is requested in pages and only the latest TARGET_JOB_COUNT
  * records are returned to the job-sync pipeline.
  */
-const TARGET_JOB_COUNT = 1000;
+const TARGET_JOB_COUNT = 100000;
 
 /**
  * Force the Adzuna connection to use IPv4.
